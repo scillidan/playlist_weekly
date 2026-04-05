@@ -39,7 +39,7 @@ artist_grid_content = (
     ))'''
 )
 
-content = f'''// Authors: MiniMax-M2.1🧙‍♂️, scillidan🤡
+content = f'''// Authors: MiniMax-M2.1🧙‍♂️, GLM-5🧙‍♂️, scillidan🤡
 
 #let song = "{name}"
 #let filename = sys.inputs.at("path", default: song)
