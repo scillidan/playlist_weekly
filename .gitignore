@@ -1,6 +1,8 @@
 _/
 *.mp3
-*.srt
+*.typ
 *.pdf
 *.pdf.jpg
+*.srt
 *.mp4
+nul
