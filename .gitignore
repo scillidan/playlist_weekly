@@ -1,8 +1,5 @@
 _/
-*.mp3
-*.typ
-*.pdf
-*.pdf.jpg
-*.srt
-*.mp4
+_output/
+medias/
+.ruff_cache/
 nul

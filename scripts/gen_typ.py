@@ -2,114 +2,106 @@ import sys
 import glob
 import os
 
-name = sys.argv[1]
-basename = os.path.splitext(name)[0] if "." in name else name
 
-artist_images = glob.glob(f"images/{basename}_artist*.jpg")
-artist_images.sort()
+def safe_print(msg):
+    """Print to stdout, falling back to bytes if the console cannot encode the text."""
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        sys.stdout.buffer.write((msg + "\n").encode("utf-8", "replace"))
 
-if len(artist_images) == 0:
-    artist_images = [f"images/{basename}_artist.jpg"]
 
-artist_images_relative = [
-    img.replace("images/", "../images/").replace("images\\", "../images/")
-    for img in artist_images
-]
+def typ_str(s):
+    """Escape a string for embedding in a Typst string literal."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
 
-artist_grid_items = ", ".join(
-    [
-        f'''align(center, box(
-      width: 100%,
-      height: 100%,
-      stroke: 0.15pt + black,
-      image("{img}", width: 100%, height: 100%, fit: "contain"),
-    ))'''
-        for img in artist_images_relative
+
+def find_cover(name):
+    for ext in ("jpg", "jpeg", "png"):
+        path = f"assets/{name}_cover.{ext}"
+        if os.path.exists(path):
+            return f"/assets/{name}_cover.{ext}"
+    return None
+
+
+def find_artist_images(name):
+    arts = []
+    for ext in ("jpg", "jpeg", "png"):
+        arts.extend(glob.glob(f"assets/{name}_artist*.{ext}"))
+    arts.sort()
+    if not arts:
+        for ext in ("jpg", "jpeg", "png"):
+            path = f"assets/{name}_artist.{ext}"
+            if os.path.exists(path):
+                arts = [path]
+                break
+    return [f"/assets/{os.path.basename(a)}" for a in arts]
+
+
+def main():
+    name = sys.argv[1]
+    basename = os.path.splitext(name)[0]
+
+    cover_image = find_cover(basename)
+    artist_images = find_artist_images(basename)
+    lrc_path = f"/medias/{basename}.lrc"
+
+    if not os.path.exists(f"medias/{basename}.lrc"):
+        safe_print(f"Warning: medias/{basename}.lrc not found")
+
+    cover_arg = f'"{typ_str(cover_image)}"' if cover_image else "none"
+    artists_arg = (
+        "(" + ", ".join(f'"{typ_str(a)}"' for a in artist_images) + ")"
+        if artist_images
+        else "()"
+    )
+
+    # Parameters grouped by relevance: identity, layout, then typography.
+    # Active params are uncommented; optional params are commented out.
+    param_lines = [
+        f'  name: "{typ_str(basename)}",',
+        f"  cover: {cover_arg},",
+        f"  artists: {artists_arg},",
+        f'  lrc: "{typ_str(lrc_path)}",',
+        "  left-ratio: 0.35,",
+        "  spacing_all: 10pt,",
+        "  lyrics-columns: 1,",
+        "  // lyrics-column-widths: (1.2fr, 0.8fr),",
+        "  // lyrics-columns-split: (20,),",
+        "  // image-inset: (top: 0pt, left: 0pt),",
+        "  // lyrics-inset: (top: 0pt, left: 0pt),",
     ]
-)
-
-artist_grid_content = (
-    f"grid(columns: {len(artist_images)}, rows: (1fr,), gutter: 0.5em, {artist_grid_items})"
-    if len(artist_images) > 1
-    else f'''align(center, box(
-      width: 100%,
-      height: 100%,
-      stroke: 0.15pt + black,
-      image("{artist_images_relative[0]}", width: 100%, height: 100%, fit: "contain"),
-    ))'''
-)
-
-content = f'''// Authors: MiniMax-M2.1🧙‍♂️, GLM-5🧙‍♂️, scillidan🤡
-
-#let song = "{name}"
-#let filename = sys.inputs.at("path", default: song)
-#let name-only = filename.split("/").last().split(".").first()
-
-#let cover-image = "../images/" + name-only + "_cover.jpg"
-#let lrc-file = "../" + name-only + ".lrc"
-#let rawContent = read(lrc-file)
-#let split-filename(name, sep: " - ") = {{
-  let parts = name.split(sep)
-  if parts.len() > 1 {{
-    (parts.at(0), parts.slice(1).join(sep))
-  }} else {{
-    (name, "")
-  }}
-}}
-#let (title, artist) = split-filename(name-only)
-#let processLines(text) = {{
-  text
-    .split("\\n")
-    .map(line => {{
-      line.replace(regex("^\\[(.+?)]"), "").trim()
-    }})
-    .join("\\n")
-}}
-#let content = processLines(rawContent)
-
-#set page("a5", flipped: true, margin: 5%)
-
-#grid(
-  columns: 2,
-  gutter: 1em,
-  [
-    #block(
-      width: 100%,
-      height: 100%,
-      grid(
-        columns: 1,
-        rows: (1fr, 1fr),
-        gutter: 0.5em,
-        align(center, box(
-          width: 100%,
-          height: 100%,
-          stroke: 0.15pt + black,
-          image(cover-image, width: 100%, height: 100%, fit: "contain"),
-        )),
-        {artist_grid_content}
-      )
+    if len(artist_images) > 1:
+        param_lines.extend(
+            [
+                "  // artist-grid-cols: 3,",
+                "  // artist-grid-rows: 1,",
+            ]
+        )
+    param_lines.extend(
+        [
+            "  lyrics-size: 0.55em,",
+        ]
     )
-  ],
-  [
-    #block(
-      width: 100%,
-      height: 100%,
-      inset: (x: 1em, y: 1em),
-      {{
-        text(font: ("MonaspiceNe NFM", "Sarasa Mono SC"), size: 1em, weight: "bold")[#title]
-        linebreak()
-        text(font: ("MonaspiceNe NFM", "Sarasa Mono SC"), size: 1em, weight: "medium", style: "italic")[#artist]
-        linebreak()
-        v(0.5em)
-        set text(font: ("MonaspiceNe NFM", "Sarasa Mono SC"), size: 0.65em)
-        for line in content.split("\\n") {{
-          line
-          linebreak()
-        }}
-      }}
-    )
-  ]
-)'''
 
-with open(f"typs/{name}.typ", "w", encoding="utf-8") as f:
-    f.write(content)
+    content = (
+        "// Generated by scripts/gen_typ.py\n"
+        '#import "/scripts/lyric.typ": lyric-poster\n\n'
+        "#lyric-poster(\n" + "\n".join(param_lines) + "\n)\n"
+    )
+
+    out_dir = "_output/pdfs"
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{basename}.typ")
+
+    if os.path.exists(out_path):
+        safe_print(f"Skipped: {out_path} already exists (delete it to regenerate)")
+        return
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    safe_print(f"Generated: {out_path}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,5 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
+set PYTHONIOENCODING=utf-8
 
 set "cmd=%~1"
 set "name=%~2"
@@ -15,24 +16,29 @@ if "%cmd%"=="add" (
         exit /b 1
     )
 
-    if not exist "typs" mkdir "typs"
-    if not exist "typ-pdf" mkdir "typ-pdf"
-    if not exist "typ-pdf-jpg" mkdir "typ-pdf-jpg"
-    if not exist "mp4" mkdir "mp4"
-
-    python scripts/gen_typ.py "%name%"
-
     call :get_basename "%name%" basename
 
+    set "media=medias/!basename!.mp3"
+    if not exist "!media!" (
+        echo Error: media not found for !basename! in medias/
+        exit /b 1
+    )
+
+    if not exist "_output\pdfs" mkdir "_output\pdfs"
+    if not exist "_output\jpgs" mkdir "_output\jpgs"
+    if not exist "_output\srts" mkdir "_output\srts"
+
+    python scripts/gen_typ.py "!basename!"
+
     echo Compiling typst...
-    typst compile --root . "typs/!basename!.typ" "typ-pdf/!basename!.pdf"
+    typst compile --root . "_output/pdfs/!basename!.typ" "_output/pdfs/!basename!.pdf"
 
     echo Converting to JPG...
-    magick -density 300 "typ-pdf/!basename!.pdf[0]" -resize x1080 -background white -alpha remove -quality 90 "typ-pdf-jpg/!basename!.pdf.jpg"
+    magick -density 300 "_output/pdfs/!basename!.pdf[0]" -resize x1080 -background white -alpha remove -quality 90 "_output/jpgs/!basename!.pdf.jpg"
 
-    if exist "!basename!.mp3" (
+    if exist "!media!" (
         echo Creating MP4...
-        ffmpeg -loop 1 -framerate 1 -i "typ-pdf-jpg/!basename!.pdf.jpg" -i "!basename!.mp3" -c:v libx264 -tune stillimage -c:a copy -pix_fmt yuv420p -shortest -y "mp4/!basename!.mp4"
+        ffmpeg -loop 1 -framerate 1 -i "_output/jpgs/!basename!.pdf.jpg" -i "!media!" -c:v libx264 -tune stillimage -c:a copy -pix_fmt yuv420p -shortest -y "_output/!basename!.mp4"
     )
 
     echo Done: !basename!
@@ -47,14 +53,24 @@ if "%cmd%"=="clean" (
 
     call :get_basename "%name%" basename
 
-    if exist "typ-pdf/!basename!.pdf" (
-        del "typ-pdf/!basename!.pdf"
-        echo Deleted typ-pdf/!basename!.pdf
+    if exist "_output\pdfs\!basename!.typ" (
+        del "_output\pdfs\!basename!.typ"
+        echo Deleted _output/pdfs/!basename!.typ
     )
 
-    if exist "typ-pdf-jpg/!basename!.pdf.jpg" (
-        del "typ-pdf-jpg/!basename!.pdf.jpg"
-        echo Deleted typ-pdf-jpg/!basename!.pdf.jpg
+    if exist "_output\pdfs\!basename!.pdf" (
+        del "_output\pdfs\!basename!.pdf"
+        echo Deleted _output/pdfs/!basename!.pdf
+    )
+
+    if exist "_output\jpgs\!basename!.pdf.jpg" (
+        del "_output\jpgs\!basename!.pdf.jpg"
+        echo Deleted _output/jpgs/!basename!.pdf.jpg
+    )
+
+    if exist "_output\!basename!.mp4" (
+        del "_output\!basename!.mp4"
+        echo Deleted _output/!basename!.mp4
     )
 
     exit /b 0
