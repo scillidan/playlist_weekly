@@ -40,21 +40,24 @@ def find_artist_images(name):
 
 def main():
     name = sys.argv[1]
-    basename = os.path.splitext(name)[0]
+    basename = name
 
     cover_image = find_cover(basename)
     artist_images = find_artist_images(basename)
-    lrc_path = f"/medias/{basename}.lrc"
 
-    if not os.path.exists(f"medias/{basename}.lrc"):
-        safe_print(f"Warning: medias/{basename}.lrc not found")
+    lrc_exists = os.path.exists(f"medias/{basename}.lrc")
+    lrc_path = f"/medias/{basename}.lrc" if lrc_exists else None
+    if not lrc_exists:
+        safe_print(f"Warning: medias/{basename}.lrc not found (rendering empty lyrics)")
 
     cover_arg = f'"{typ_str(cover_image)}"' if cover_image else "none"
-    artists_arg = (
-        "(" + ", ".join(f'"{typ_str(a)}"' for a in artist_images) + ")"
-        if artist_images
-        else "()"
-    )
+    lrc_arg = f'"{typ_str(lrc_path)}"' if lrc_path else "none"
+    if artist_images:
+        items = ", ".join(f'"{typ_str(a)}"' for a in artist_images)
+        trailing = "," if len(artist_images) == 1 else ""
+        artists_arg = f"({items}{trailing})"
+    else:
+        artists_arg = "()"
 
     # Parameters grouped by relevance: identity, layout, then typography.
     # Active params are uncommented; optional params are commented out.
@@ -62,7 +65,7 @@ def main():
         f'  name: "{typ_str(basename)}",',
         f"  cover: {cover_arg},",
         f"  artists: {artists_arg},",
-        f'  lrc: "{typ_str(lrc_path)}",',
+        f"  lrc: {lrc_arg},",
         "  left-ratio: 0.35,",
         "  spacing_all: 10pt,",
         "  lyrics-columns: 1,",

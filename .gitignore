@@ -1,5 +1,6 @@
 _/
 _output/
 medias/
+_temp/
 .ruff_cache/
 nul
