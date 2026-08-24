@@ -1,6 +1,6 @@
 _/
 _output/
-medias/
+medias/*.mp3
 _temp/
 .ruff_cache/
 nul
